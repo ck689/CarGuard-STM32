@@ -1,0 +1,37 @@
+# ---------- Keil MDK / ARM 编译产物 ----------
+Objects/
+Listings/
+DebugConfig/
+*.o
+*.crf
+*.d
+*.dep
+*.lst
+*.map
+*.htm
+*.lnp
+*.sct
+*.iex
+*.scr
+*.axf
+*.build_log.htm
+*.uvguix*
+*.uvgui.*
+*.uvoptx
+*.uvopt
+*.bak
+*.zip
+*.tmp
+
+# ---------- RTE 运行环境生成文件 ----------
+RTE/_*/
+RTE/Target_/
+
+# ---------- 其他 ----------
+Desktop.ini
+Thumbs.db
+.vscode/
+.idea/
+*.log
+JLinkLog.txt
+JLinkSettings.ini
