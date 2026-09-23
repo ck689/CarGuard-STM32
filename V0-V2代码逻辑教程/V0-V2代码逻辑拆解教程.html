@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>车载终端 V0→V1→V2 代码逻辑完全拆解教程</title>
+<style>
+:root{
+  --ink:#1A1B1C;--sub:#5B6472;--line:#E4E6EB;--bg:#F6F7F9;--card:#FFFFFF;
+  --blue:#2563EB;--blue-d:#1E40AF;--cyan:#0E7490;--purple:#7C3AED;
+  --orange:#EA580C;--red:#DC2626;--green:#15803D;--gold:#B45309;--navy:#0F2440;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.8;font-size:15px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px 80px}
+
+/* 封面 */
+.cover{background:linear-gradient(135deg,#0F2440 0%,#1E3A5F 55%,#2563EB 130%);color:#fff;padding:60px 0 50px;text-align:center;border-radius:0 0 20px 20px}
+.cover .tag{display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 18px;font-size:13px;letter-spacing:2px;margin-bottom:20px}
+.cover h1{font-size:30px;line-height:1.4;font-weight:700;margin-bottom:14px}
+.cover .sub{font-size:15px;color:#C9D8EC;max-width:680px;margin:0 auto}
+
+/* 导航 */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);margin-top:20px;border-radius:10px}
+.nav-inner{max-width:1100px;margin:0 auto;padding:10px 20px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;overflow-x:auto}
+.nav-inner a{color:var(--sub);text-decoration:none;white-space:nowrap;padding:2px 8px;border-radius:4px}
+.nav-inner a:hover{background:#EFF4FF;color:var(--blue)}
+
+/* 章节 */
+.chapter{background:#fff;border:1px solid var(--line);border-radius:14px;padding:32px 36px;margin:28px 0}
+.chapter-head{border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:22px}
+.chapter-num{font-size:12px;color:var(--blue);font-weight:700;letter-spacing:2px;margin-bottom:4px}
+.chapter-head h2{font-size:22px;font-weight:700;color:var(--navy)}
+h3{font-size:17px;margin:24px 0 10px;color:var(--blue-d);border-left:4px solid var(--blue);padding-left:10px}
+h4{font-size:15px;margin:16px 0 6px;color:#374151}
+p{margin:8px 0}
+
+/* 提示框 */
+.lead{font-size:15px;background:#EFF4FF;border-left:4px solid var(--blue);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+.tip{background:#F0FDF4;border-left:4px solid var(--green);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14px}
+.warn{background:#FFF7ED;border-left:4px solid var(--orange);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14px}
+.analogy{background:#F5F3FF;border-left:4px solid var(--purple);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14px}
+.analogy b{color:var(--purple)}
+
+/* 代码 */
+.code{background:#0F172A;color:#E2E8F0;border-radius:10px;padding:14px 16px;overflow-x:auto;font-family:'Consolas','JetBrains Mono','Courier New',monospace;font-size:13px;line-height:1.7;margin:10px 0}
+.code .cm{color:#7DD3A8}.code .kw{color:#93C5FD}.code .st{color:#FBBF24}
+.code .fn{color:#F0ABFC}.code .dg{color:#94A3B8}.code .pp{color:#C4B5FD}
+.code .num{color:#FB923C}
+.code .hl{background:rgba(251,191,36,.18);border-radius:3px;padding:0 2px}
+.code-caption{font-size:12.5px;color:var(--gray);margin:4px 0 2px;font-weight:600}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;margin:14px 0;background:#fff;border-radius:10px;overflow:hidden;font-size:13.5px}
+th{background:var(--navy);color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:13px}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:nth-child(even) td{background:#FAFBFC}
+td .mini{color:var(--gray);font-size:12px}
+
+/* 卡片 */
+.grid{display:flex;flex-wrap:wrap;gap:14px;margin:14px 0}
+.card{flex:1 1 220px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.card .t{font-weight:700;font-size:14.5px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.card p,.card li{font-size:13px;color:#374151;margin:3px 0}
+.card ul{padding-left:18px}
+
+/* SVG图 */
+.fig{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0;overflow-x:auto}
+.fig-title{font-size:14px;font-weight:700;margin-bottom:10px;color:var(--navy)}
+.fig-note{font-size:12px;color:var(--gray);margin-top:8px}
+svg text{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif}
+
+/* 版本徽章 */
+.ver{display:inline-block;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700;color:#fff;margin-right:6px}
+.ver-v0{background:var(--cyan)}.ver-v1{background:var(--orange)}.ver-v2{background:var(--purple)}
+
+/* 步骤列表 */
+.steps{counter-reset:step;list-style:none;padding:0;margin:14px 0}
+.steps li{counter-increment:step;position:relative;padding:10px 0 10px 44px;border-bottom:1px dashed var(--line);font-size:14px}
+.steps li::before{content:counter(step);position:absolute;left:0;top:10px;width:30px;height:30px;background:var(--blue);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.steps li:last-child{border-bottom:none}
+
+@media(max-width:640px){
+  .cover h1{font-size:22px}.chapter{padding:20px 16px}
+  .code{font-size:11.5px}nav{position:static}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 封面 ============ -->
+<div class="cover">
+  <span class="tag">STM32 项目实战 · 代码逻辑拆解</span>
+  <h1>车载智能监测终端<br>V0 → V1 → V2 代码逻辑完全拆解</h1>
+  <p class="sub">从"串口发指令"到"ADC采数据"再到"OLED上屏"——每一行代码为什么这么写、怎么实现的、你怎么自己写出来</p>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 导航 ============ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#overview">总览</a>
+    <a href="#v0">V0 串口控制</a>
+    <a href="#v1">V1 ADC采集</a>
+    <a href="#v2">V2 OLED显示</a>
+    <a href="#compare">版本对比</a>
+    <a href="#method">自己写的方法</a>
+  </div>
+</nav>
+
+<!-- ============ 总览 ============ -->
+<div class="chapter" id="overview">
+  <div class="chapter-head">
+    <div class="chapter-num">OVERVIEW</div>
+    <h2>三个版本在做什么？一句话看懂</h2>
+  </div>
+
+  <div class="lead">
+    想象你在造一辆"智能小车"的仪表盘。<b>V0</b>是你刚学会用"对讲机"（串口）喊口令控制车灯和喇叭；<b>V1</b>是你装上了"电压表"和"温度计"（ADC），能读数据了但只能在电脑上看；<b>V2</b>是你终于把屏幕（OLED）装在车上，脱离电脑也能看到数据。
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--cyan)"></span>V0 · 工程骨架+串口</div>
+      <p><b>目标：</b>能通过串口发指令控制LED和蜂鸣器</p>
+      <p><b>新增：</b>USART串口、LED、BEEP</p>
+      <p><b>核心思路：</b>中断收字符 → 主循环解析指令 → 执行操作</p>
+      <p class="mini">就像：学会用对讲机喊"开灯""响喇叭"</p>
+    </div>
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--orange)"></span>V1 · ADC数据采集</div>
+      <p><b>目标：</b>采集电压和温度，串口打印，超压报警</p>
+      <p><b>新增：</b>ADC（PA0电压、PA1 NTC温度）</p>
+      <p><b>核心思路：</b>定时读ADC → 换算成物理量 → 打印+报警</p>
+      <p class="mini">就像：装上电压表和温度计，但只能连电脑看</p>
+    </div>
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--purple)"></span>V2 · OLED显示</div>
+      <p><b>目标：</b>把电压温度显示到OLED屏幕，脱离电脑独立工作</p>
+      <p><b>新增：</b>OLED（软件I2C，PB8/PB9）</p>
+      <p><b>核心思路：</b>标签写一次 → 循环只更新数字（局部刷新防闪烁）</p>
+      <p class="mini">就像：终于把屏幕装车上，不用连电脑了</p>
+    </div>
+  </div>
+
+  <h3>版本演进图（代码是怎么一步步长出来的）</h3>
+  <div class="fig">
+    <div class="fig-title">图1：V0→V1→V2 功能叠加关系</div>
+    <svg width="100%" viewBox="0 0 960 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- V0框 -->
+      <rect x="30" y="40" width="260" height="200" rx="12" fill="#ECFEFF" stroke="#0E7490" stroke-width="2"/>
+      <text x="160" y="70" text-anchor="middle" font-size="16" font-weight="700" fill="#0E7490">V0 基础层</text>
+      <text x="50" y="100" font-size="13" fill="#155E75">• LED (PA8)</text>
+      <text x="50" y="125" font-size="13" fill="#155E75">• BEEP (PB0)</text>
+      <text x="50" y="150" font-size="13" fill="#155E75">• USART1 (PA9/PA10)</text>
+      <text x="50" y="180" font-size="12" fill="#0E7490" font-style="italic">串口指令控制</text>
+      <text x="50" y="200" font-size="12" fill="#0E7490" font-style="italic">LED_ON / BEEP_ON...</text>
+      <!-- 箭头V0→V1 -->
+      <path d="M290 140 L340 140" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="315" y="130" text-anchor="middle" font-size="11" fill="#666">+ADC</text>
+      <!-- V1框 -->
+      <rect x="350" y="40" width="260" height="200" rx="12" fill="#FFF7ED" stroke="#EA580C" stroke-width="2"/>
+      <text x="480" y="70" text-anchor="middle" font-size="16" font-weight="700" fill="#EA580C">V1 = V0 + ADC</text>
+      <text x="370" y="100" font-size="13" fill="#9A3412">• 【继承】V0全部</text>
+      <text x="370" y="125" font-size="13" fill="#9A3412">• ADC1 (PA0电压)</text>
+      <text x="370" y="150" font-size="13" fill="#9A3412">• ADC1 (PA1 NTC温度)</text>
+      <text x="370" y="180" font-size="12" fill="#EA580C" font-style="italic">采集电压温度</text>
+      <text x="370" y="200" font-size="12" fill="#EA580C" font-style="italic">串口打印+超压报警</text>
+      <!-- 箭头V1→V2 -->
+      <path d="M610 140 L660 140" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="635" y="130" text-anchor="middle" font-size="11" fill="#666">+OLED</text>
+      <!-- V2框 -->
+      <rect x="670" y="40" width="260" height="200" rx="12" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2"/>
+      <text x="800" y="70" text-anchor="middle" font-size="16" font-weight="700" fill="#7C3AED">V2 = V1 + OLED</text>
+      <text x="690" y="100" font-size="13" fill="#5B21B6">• 【继承】V1全部</text>
+      <text x="690" y="125" font-size="13" fill="#5B21B6">• OLED (软件I2C)</text>
+      <text x="690" y="150" font-size="13" fill="#5B21B6">• PB8=SCL, PB9=SDA</text>
+      <text x="690" y="180" font-size="12" fill="#7C3AED" font-style="italic">数据上屏显示</text>
+      <text x="690" y="200" font-size="12" fill="#7C3AED" font-style="italic">局部刷新无闪烁</text>
+      <!-- 箭头标记 -->
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="fig-note">关键理解：每个新版本都是在上一个版本基础上"叠加"新功能，旧代码不动，只加新文件、在main.c里加几行初始化和逻辑。</div>
+  </div>
+</div>
+
+<!-- ============ V0 ============ -->
+<div class="chapter" id="v0">
+  <div class="chapter-head">
+    <div class="chapter-num">CHAPTER · V0</div>
+    <h2>V0：工程骨架 + 串口通信（用指令控制LED和蜂鸣器）</h2>
+  </div>
+
+  <div class="lead">
+    <span class="ver ver-v0">V0</span>
+    <b>目标功能：</b>在电脑串口助手里输入 <code>LED1_ON</code>，板子上的LED就亮；输入 <code>BEEP_ON</code>，蜂鸣器就响。<b>这是整个项目的"地基"——把工程跑通、把串口通信用熟。</b>
+  </div>
+
+  <h3>1. 硬件连接（就3个东西）</h3>
+  <div class="fig">
+    <div class="fig-title">图2：V0 硬件连接图</div>
+    <svg width="100%" viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- STM32芯片 -->
+      <rect x="260" y="60" width="200" height="140" rx="10" fill="#1E3A5F" stroke="#0F2440" stroke-width="2"/>
+      <text x="360" y="90" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">STM32F103C8T6</text>
+      <text x="360" y="112" text-anchor="middle" font-size="11" fill="#93C5FD">核心板</text>
+      <!-- 引脚标签 -->
+      <text x="275" y="145" font-size="11" fill="#FBBF24">PA8 →</text>
+      <text x="275" y="170" font-size="11" fill="#FBBF24">PB0 →</text>
+      <text x="430" y="145" font-size="11" fill="#FBBF24">← PA9(TX)</text>
+      <text x="430" y="170" font-size="11" fill="#FBBF24">← PA10(RX)</text>
+      <!-- LED -->
+      <rect x="60" y="120" width="120" height="50" rx="8" fill="#FEF3C7" stroke="#B45309" stroke-width="1.5"/>
+      <text x="120" y="145" text-anchor="middle" font-size="13" font-weight="700" fill="#92400E">LED 指示灯</text>
+      <text x="120" y="162" text-anchor="middle" font-size="10" fill="#B45309">正极→PA8，负极→GND</text>
+      <path d="M180 145 L260 145" stroke="#B45309" stroke-width="2" stroke-dasharray="4,2"/>
+      <!-- BEEP -->
+      <rect x="60" y="185" width="120" height="50" rx="8" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.5"/>
+      <text x="120" y="210" text-anchor="middle" font-size="13" font-weight="700" fill="#991B1B">蜂鸣器 BEEP</text>
+      <text x="120" y="227" text-anchor="middle" font-size="10" fill="#DC2626">信号脚→PB0</text>
+      <path d="M180 210 L260 170" stroke="#DC2626" stroke-width="2" stroke-dasharray="4,2"/>
+      <!-- 串口 -->
+      <rect x="540" y="120" width="140" height="70" rx="8" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.5"/>
+      <text x="610" y="145" text-anchor="middle" font-size="13" font-weight="700" fill="#1E40AF">USB转TTL模块</text>
+      <text x="610" y="165" text-anchor="middle" font-size="10" fill="#2563EB">TX接PA10，RX接PA9</text>
+      <text x="610" y="180" text-anchor="middle" font-size="10" fill="#2563EB">（交叉连接：TX→RX）</text>
+      <path d="M460 145 L540 145" stroke="#2563EB" stroke-width="2" stroke-dasharray="4,2"/>
+      <path d="M460 170 L540 160" stroke="#2563EB" stroke-width="2" stroke-dasharray="4,2"/>
+      <!-- 电脑 -->
+      <rect x="560" y="210" width="100" height="35" rx="6" fill="#E0E7FF" stroke="#4338CA" stroke-width="1.5"/>
+      <text x="610" y="232" text-anchor="middle" font-size="12" font-weight="700" fill="#3730A3">电脑串口助手</text>
+      <path d="M610 190 L610 210" stroke="#4338CA" stroke-width="2"/>
+    </svg>
+    <div class="fig-note">注意：串口是交叉连接——模块的TX接单片机的RX(PA10)，模块的RX接单片机的TX(PA9)。接反了收不到数据。</div>
+  </div>
+
+  <h3>2. 代码运行流程（先看全局，再看细节）</h3>
+  <div class="fig">
+    <div class="fig-title">图3：V0 程序运行流程图</div>
+    <svg width="100%" viewBox="0 0 780 380" xmlns="http://www.w3.org/2000/svg">
+      <!-- 开始 -->
+      <rect x="320" y="10" width="140" height="40" rx="20" fill="#1E3A5F"/>
+      <text x="390" y="35" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">上电启动</text>
+      <path d="M390 50 L390 70" stroke="#666" stroke-width="2" marker-end="url(#arr2)"/>
+      <!-- 初始化 -->
+      <rect x="250" y="70" width="280" height="60" rx="8" fill="#ECFEFF" stroke="#0E7490" stroke-width="2"/>
+      <text x="390" y="95" text-anchor="middle" font-size="13" font-weight="700" fill="#0E7490">初始化（只跑一次）</text>
+      <text x="390" y="115" text-anchor="middle" font-size="11" fill="#155E75">LED_Init() → BEEP_Init() → USART1_Init(115200)</text>
+      <path d="M390 130 L390 150" stroke="#666" stroke-width="2" marker-end="url(#arr2)"/>
+      <!-- 主循环 -->
+      <rect x="180" y="150" width="420" height="200" rx="10" fill="#FFFBEB" stroke="#B45309" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="390" y="175" text-anchor="middle" font-size="14" font-weight="700" fill="#92400E">while(1) 主循环（反复跑）</text>
+      <!-- 判断RxFlag -->
+      <polygon points="390,190 470,220 390,250 310,220" fill="#FEF3C7" stroke="#B45309" stroke-width="2"/>
+      <text x="390" y="220" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">有新指令？</text>
+      <text x="390" y="235" text-anchor="middle" font-size="10" fill="#B45309">RxFlag==1?</text>
+      <!-- No箭头 -->
+      <path d="M310 220 L220 220 L220 330 L390 330" stroke="#991B1B" stroke-width="2" fill="none" marker-end="url(#arr2)"/>
+      <text x="240" y="215" font-size="11" fill="#991B1B">没有→继续等</text>
+      <!-- Yes箭头 -->
+      <path d="M470 220 L560 220" stroke="#15803D" stroke-width="2" marker-end="url(#arr2)"/>
+      <text x="510" y="215" font-size="11" fill="#15803D">有→处理</text>
+      <!-- 处理框 -->
+      <rect x="560" y="195" width="180" height="90" rx="8" fill="#F0FDF4" stroke="#15803D" stroke-width="2"/>
+      <text x="650" y="218" text-anchor="middle" font-size="12" font-weight="700" fill="#15803D">解析并执行</text>
+      <text x="650" y="238" text-anchor="middle" font-size="10" fill="#166534">清RxFlag=0</text>
+      <text x="650" y="253" text-anchor="middle" font-size="10" fill="#166534">strcmp比对指令</text>
+      <text x="650" y="268" text-anchor="middle" font-size="10" fill="#166534">执行LED/BEEP操作</text>
+      <text x="650" y="283" text-anchor="middle" font-size="10" fill="#166534">清RxLen=0</text>
+      <!-- 循环回去 -->
+      <path d="M650 285 L650 340 L390 340" stroke="#666" stroke-width="2" fill="none"/>
+      <!-- 中断说明（旁边） -->
+      <rect x="20" y="160" width="140" height="80" rx="8" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.5"/>
+      <text x="90" y="182" text-anchor="middle" font-size="11" font-weight="700" fill="#991B1B">⚡ 串口中断（后台）</text>
+      <text x="90" y="200" text-anchor="middle" font-size="10" fill="#991B1B">每收到1个字符</text>
+      <text x="90" y="215" text-anchor="middle" font-size="10" fill="#991B1B">自动存入RxBuf</text>
+      <text x="90" y="230" text-anchor="middle" font-size="10" fill="#991B1B">遇\n置RxFlag=1</text>
+      <path d="M160 200 L180 220" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#666"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="fig-note">核心思想：<b>中断负责"收"，主循环负责"处理"</b>。中断像快递员把信件塞进信箱（RxBuf），主循环像你时不时去看信箱有没有信（RxFlag），有信就拆开处理。两者互不阻塞。</div>
+  </div>
+
+  <h3>3. 核心代码逐行拆解</h3>
+
+  <h4>① 初始化部分（main函数开头，只执行一次）</h4>
+  <div class="code-caption">文件：user/main.c — 初始化段</div>
+  <div class="code"><span class="kw">int</span> <span class="fn">main</span>(<span class="kw">void</span>)
+{
+    <span class="cm">// ===== 初始化（只执行一次）=====</span>
+    <span class="fn">LED_Init</span>();           <span class="cm">// ① 配置PA8为推挽输出，LED引脚准备好</span>
+    <span class="fn">BEEP_Init</span>();          <span class="cm">// ② 配置PB0为推挽输出，蜂鸣器引脚准备好</span>
+    <span class="fn">USART1_Init</span>(<span class="num">115200</span>); <span class="cm">// ③ 配置串口波特率115200，使能接收中断</span>
+    <span class="fn">printf</span>(<span class="st">"CarGuard V0 启动成功！\r\n"</span>); <span class="cm">// ④ 串口打印欢迎语（证明启动成功）</span>
+</div>
+  <div class="analogy">
+    <b>通俗理解：</b>初始化就像开店前的准备——先把灯装好（LED_Init）、把喇叭装好（BEEP_Init）、把对讲机调好频率（USART1_Init），然后对着对讲机喊一声"我开张了"（printf）。这些事只做一次。
+  </div>
+
+  <h4>② 主循环：检查有没有新指令</h4>
+  <div class="code-caption">文件：user/main.c — 主循环判断</div>
+  <div class="code">    <span class="kw">while</span> (<span class="num">1</span>)   <span class="cm">// 死循环，永远跑下去</span>
+    {
+        <span class="kw">if</span> (<span class="hl">RxFlag == 1</span>)   <span class="cm">// ① 检查"信箱"里有没有新指令</span>
+        {
+            <span class="hl">RxFlag = 0</span>;        <span class="cm">// ② 先把标志清零（相当于"信件已读"）</span>
+            <span class="cm">// ... 解析指令 ...</span>
+            <span class="hl">RxLen = 0</span>;         <span class="cm">// ③ 清空接收长度，准备收下一条指令</span>
+        }
+    }   <span class="cm">// RxFlag==0时，循环空转，什么都不做（继续等）</span></div>
+  <div class="tip">
+    <b>为什么用标志位而不是直接在中断里处理？</b>因为中断要快进快出（在中断里做复杂操作会影响其他中断）。所以中断只做"收字符+置标志"这种轻量活，把"解析指令+执行操作"放到主循环里慢慢处理。这是嵌入式的经典设计模式。
+  </div>
+
+  <h4>③ 指令解析：用strcmp比对字符串</h4>
+  <div class="code-caption">文件：user/main.c — 指令解析（节选）</div>
+  <div class="code">    <span class="kw">if</span> (<span class="fn">strcmp</span>((<span class="kw">char</span>*)RxBuf, <span class="st">"LED1_ON"</span>) == <span class="num">0</span>)
+    {
+        <span class="fn">LED_Set</span>(<span class="num">1</span>);              <span class="cm">// 字符串匹配→点亮LED</span>
+        <span class="fn">printf</span>(<span class="st">"[OK] LED 已点亮\r\n"</span>);
+    }
+    <span class="kw">else if</span> (<span class="fn">strcmp</span>((<span class="kw">char</span>*)RxBuf, <span class="st">"BEEP_ON"</span>) == <span class="num">0</span>)
+    {
+        <span class="fn">BEEP_Set</span>(<span class="num">1</span>);             <span class="cm">// 字符串匹配→开启蜂鸣器</span>
+        <span class="fn">printf</span>(<span class="st">"[OK] 蜂鸣器已开启\r\n"</span>);
+    }
+    <span class="kw">else</span>
+    {
+        <span class="fn">printf</span>(<span class="st">"[错误] 未知指令: %s\r\n"</span>, RxBuf);  <span class="cm">// 都不匹配→报错</span>
+    }</div>
+  <div class="analogy">
+    <b>通俗理解：</b>strcmp就像"对暗号"。你说"LED1_ON"，它一个字符一个字符比对，完全一样就返回0（对上了），然后执行对应动作。对不上就试下一个暗号，都对不上就说"听不懂你在说啥"。
+  </div>
+
+  <h4>④ 串口接收中断（后台自动运行，你不用主动调用）</h4>
+  <div class="code-caption">文件：hardwere/USART.c — 中断服务函数</div>
+  <div class="code"><span class="kw">void</span> <span class="fn">USART1_IRQHandler</span>(<span class="kw">void</span>)
+{
+    <span class="kw">if</span> (<span class="fn">USART_GetITStatus</span>(USART1, USART_IT_RXNE) == SET)
+    {
+        <span class="kw">uint8_t</span> ch = <span class="fn">USART_ReceiveData</span>(USART1);  <span class="cm">// ① 读走收到的字节</span>
+
+        <span class="kw">if</span> (ch == <span class="st">'\n'</span> || ch == <span class="st">'\r'</span>)        <span class="cm">// ② 遇到换行/回车→一条指令收完了</span>
+        {
+            RxBuf[RxLen] = <span class="st">'\0'</span>;                  <span class="cm">// 字符串末尾补0（C语言字符串约定）</span>
+            RxFlag = <span class="num">1</span>;                          <span class="cm">// 置标志→通知主循环"有新指令"</span>
+        }
+        <span class="kw">else if</span> (RxLen < <span class="num">63</span>)                  <span class="cm">// ③ 普通字符→存入缓冲区</span>
+        {
+            RxBuf[RxLen++] = ch;
+        }
+    }
+}</div>
+  <div class="warn">
+    <b>关键细节：</b>为什么遇到'\n'才认为一条指令结束？因为串口助手发送时，每行末尾会自动加换行符。我们用换行符作为"一条指令的结束标记"，这样就能区分"LED1_ON"和"LED1_OFF"是两条独立指令。RxLen<63是防越界保护，防止缓冲区溢出。
+  </div>
+
+  <h3>4. V0 功能-代码对应表</h3>
+  <table>
+    <tr><th>你想实现的功能</th><th>对应代码</th><th>在哪个文件</th></tr>
+    <tr><td>LED能亮能灭</td><td><code>LED_Init()</code> + <code>LED_Set(1/0)</code></td><td>led.c / main.c</td></tr>
+    <tr><td>蜂鸣器能响能停</td><td><code>BEEP_Init()</code> + <code>BEEP_Set(1/0)</code></td><td>BEEP.c / main.c</td></tr>
+    <tr><td>能收到电脑发的字符</td><td><code>USART1_Init()</code> + 中断里收字符</td><td>USART.c</td></tr>
+    <tr><td>能给电脑发消息</td><td><code>printf()</code>（靠fputc重定向到串口）</td><td>USART.c的fputc</td></tr>
+    <tr><td>知道一条指令收完了</td><td>中断里遇'\n'置 <code>RxFlag=1</code></td><td>USART.c</td></tr>
+    <tr><td>根据指令执行操作</td><td>主循环里 <code>strcmp</code> 比对 + if-else</td><td>main.c</td></tr>
+  </table>
+
+  <div class="tip">
+    <b>V0 你应该掌握到什么程度？</b>能独立写出"初始化三个外设→主循环查标志→strcmp解析指令"这个骨架。能解释为什么中断里只收字符不处理指令。能说清RxFlag和RxLen的作用。达到这个标准，V1就只是"加一个ADC外设"的事了。
+  </div>
+</div>
+
+<!-- ============ V1 ============ -->
+<div class="chapter" id="v1">
+  <div class="chapter-head">
+    <div class="chapter-num">CHAPTER · V1</div>
+    <h2>V1：ADC 数据采集（读电压和温度）</h2>
+  </div>
+
+  <div class="lead">
+    <span class="ver ver-v1">V1</span>
+    <b>目标功能：</b>板子能自己测电压（电位器模拟）和温度（手捏NTC），通过串口打印出来，电压过高时LED亮报警。<b>V0是"控制输出"，V1是"采集输入"——方向反过来了。</b>
+  </div>
+
+  <h3>1. 先搞懂ADC是什么（最核心的概念）</h3>
+  <div class="analogy">
+    <b>通俗理解：</b>单片机是数字世界的生物，它只认识0和1。但现实世界是模拟的——电压是连续变化的（3.15V、3.16V、3.157V……）。<b>ADC（模数转换器）就是翻译官</b>，把连续的模拟电压翻译成单片机能懂的数字。STM32F103的ADC是12位的，意思是它把0~3.3V分成了4096份（2^12=4096），每份约0.0008V。所以ADC读到的数字是0~4095，需要换算回电压。
+  </div>
+
+  <div class="fig">
+    <div class="fig-title">图4：ADC 换算原理（模拟量 ↔ 数字量）</div>
+    <svg width="100%" viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg">
+      <!-- 左侧：模拟世界 -->
+      <rect x="30" y="30" width="200" height="160" rx="10" fill="#FEF3C7" stroke="#B45309" stroke-width="2"/>
+      <text x="130" y="60" text-anchor="middle" font-size="14" font-weight="700" fill="#92400E">模拟世界（连续）</text>
+      <text x="130" y="90" text-anchor="middle" font-size="24" fill="#B45309">3.157V</text>
+      <text x="130" y="115" text-anchor="middle" font-size="11" fill="#92400E">电压可以是任意值</text>
+      <text x="130" y="135" text-anchor="middle" font-size="11" fill="#92400E">3.15V、3.16V、3.157V...</text>
+      <text x="130" y="165" text-anchor="middle" font-size="11" fill="#B45309" font-style="italic">电位器/NTC输出</text>
+      <!-- 箭头 -->
+      <path d="M230 110 L310 110" stroke="#666" stroke-width="3" marker-end="url(#arr3)"/>
+      <text x="270" y="100" text-anchor="middle" font-size="11" fill="#666">ADC翻译</text>
+      <!-- 中间：ADC -->
+      <rect x="310" y="70" width="180" height="80" rx="10" fill="#1E3A5F"/>
+      <text x="400" y="100" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">ADC 12位</text>
+      <text x="400" y="125" text-anchor="middle" font-size="11" fill="#93C5FD">0~3.3V → 0~4095</text>
+      <text x="400" y="142" text-anchor="middle" font-size="10" fill="#93C5FD">精度 = 3.3/4096 ≈ 0.8mV</text>
+      <!-- 箭头 -->
+      <path d="M490 110 L570 110" stroke="#666" stroke-width="3" marker-end="url(#arr3)"/>
+      <!-- 右侧：数字世界 -->
+      <rect x="570" y="30" width="200" height="160" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+      <text x="670" y="60" text-anchor="middle" font-size="14" font-weight="700" fill="#1E40AF">数字世界（离散）</text>
+      <text x="670" y="90" text-anchor="middle" font-size="24" fill="#2563EB">3915</text>
+      <text x="670" y="115" text-anchor="middle" font-size="11" fill="#1E40AF">只能是0~4095的整数</text>
+      <text x="670" y="135" text-anchor="middle" font-size="11" fill="#1E40AF">3914、3915、3916...</text>
+      <text x="670" y="165" text-anchor="middle" font-size="11" fill="#2563EB" font-style="italic">单片机能直接运算</text>
+      <defs>
+        <marker id="arr3" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <polygon points="0 0, 10 4, 0 8" fill="#666"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="fig-note">换算公式：<code>电压 = ADC值 × 3.3 ÷ 4096</code>。例如ADC读到3915，电压 = 3915 × 3.3 ÷ 4096 ≈ 3.157V。</div>
+  </div>
+
+  <h3>2. 硬件连接（电压用分压，温度用NTC）</h3>
+  <div class="grid">
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--orange)"></span>电压采集（PA0）</div>
+      <p><b>为什么要分压？</b>车载电压可能到12V以上，但ADC只能测0~3.3V。所以用两个电阻把电压缩小一半（分压比2:1），12V变成6V……等等，6V还是超3.3V？</p>
+      <p class="mini">实际上V1阶段用的是电位器模拟，输出0~3.3V直接接PA0。代码里乘了2是为后续接真实车载电压预留的分压比。</p>
+    </div>
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--red)"></span>温度采集（PA1）</div>
+      <p><b>NTC是什么？</b>NTC是负温度系数热敏电阻——温度越高，电阻越小。把NTC和一个10K固定电阻串联，测中间点的电压，就能反推出NTC的阻值，再算出温度。</p>
+      <p class="mini">接线：3.3V → NTC → PA1 → 10K电阻 → GND</p>
+    </div>
+  </div>
+
+  <h3>3. 温度怎么算出来的？（B值公式）</h3>
+  <div class="fig">
+    <div class="fig-title">图5：NTC 测温推导流程</div>
+    <svg width="100%" viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- 步骤1 -->
+      <rect x="10" y="50" width="180" height="100" rx="8" fill="#FEF3C7" stroke="#B45309" stroke-width="1.5"/>
+      <text x="100" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#92400E">① 读ADC值</text>
+      <text x="100" y="100" text-anchor="middle" font-size="11" fill="#92400E">adc = 2048</text>
+      <text x="100" y="120" text-anchor="middle" font-size="10" fill="#B45309">（PA1的电压）</text>
+      <!-- 箭头 -->
+      <path d="M190 100 L220 100" stroke="#666" stroke-width="2" marker-end="url(#arr4)"/>
+      <!-- 步骤2 -->
+      <rect x="220" y="50" width="180" height="100" rx="8" fill="#FED7AA" stroke="#EA580C" stroke-width="1.5"/>
+      <text x="310" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#9A3412">② 算PA1电压</text>
+      <text x="310" y="100" text-anchor="middle" font-size="11" fill="#9A3412">v = 2048×3.3/4096</text>
+      <text x="310" y="120" text-anchor="middle" font-size="11" fill="#EA580C">= 1.65V</text>
+      <!-- 箭头 -->
+      <path d="M400 100 L430 100" stroke="#666" stroke-width="2" marker-end="url(#arr4)"/>
+      <!-- 步骤3 -->
+      <rect x="430" y="50" width="180" height="100" rx="8" fill="#FECACA" stroke="#DC2626" stroke-width="1.5"/>
+      <text x="520" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#991B1B">③ 反推NTC阻值</text>
+      <text x="520" y="100" text-anchor="middle" font-size="10" fill="#991B1B">R_ntc = 10K×(3.3/v-1)</text>
+      <text x="520" y="120" text-anchor="middle" font-size="11" fill="#DC2626">= 10KΩ</text>
+      <!-- 箭头 -->
+      <path d="M610 100 L640 100" stroke="#666" stroke-width="2" marker-end="url(#arr4)"/>
+      <!-- 步骤4 -->
+      <rect x="640" y="50" width="210" height="100" rx="8" fill="#F0FDF4" stroke="#15803D" stroke-width="1.5"/>
+      <text x="745" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">④ B值公式算温度</text>
+      <text x="745" y="98" text-anchor="middle" font-size="10" fill="#166534">T = 1/(1/298.15 + ln(R/R0)/B)</text>
+      <text x="745" y="118" text-anchor="middle" font-size="10" fill="#166534">R0=10K, B=3950</text>
+      <text x="745" y="138" text-anchor="middle" font-size="12" fill="#15803D" font-weight="700">= 25.0℃</text>
+      <defs>
+        <marker id="arr4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#666"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="fig-note">四步走：读ADC → 算电压 → 反推电阻 → B值公式算温度。NTC在25℃时阻值正好是10K，所以上面例子算出25℃。</div>
+  </div>
+
+  <h3>4. 核心代码逐行拆解</h3>
+
+  <h4>① ADC初始化（ADC.c）</h4>
+  <div class="code-caption">文件：hardwere/ADC.c — ADC1_Init</div>
+  <div class="code"><span class="kw">void</span> <span class="fn">ADC1_Init</span>(<span class="kw">void</span>)
+{
+    <span class="cm">// ① 开时钟：ADC1和GPIOA都要开</span>
+    <span class="fn">RCC_APB2PeriphClockCmd</span>(RCC_APB2Periph_ADC1 | RCC_APB2Periph_GPIOA, ENABLE);
+    <span class="fn">RCC_ADCCLKConfig</span>(RCC_PCLK2_Div6);  <span class="cm">// ADC时钟=72M/6=12MHz（必须≤14MHz）</span>
+
+    <span class="cm">// ② PA0、PA1配置为模拟输入（ADC引脚必须是模拟输入模式！）</span>
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+    <span class="fn">GPIO_Init</span>(GPIOA, &GPIO_InitStructure);
+
+    <span class="cm">// ③ 配置ADC：单次转换、右对齐、软件触发、独立模式</span>
+    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;   <span class="cm">// 单次转换（读一次转一次）</span>
+    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;  <span class="cm">// 右对齐（数值直接用）</span>
+    ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;  <span class="cm">// 软件触发</span>
+    ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;      <span class="cm">// 独立模式</span>
+    ADC_InitStructure.ADC_NbrOfChannel = <span class="num">1</span>;                    <span class="cm">// 1个通道</span>
+    ADC_InitStructure.ADC_ScanConvMode = DISABLE;            <span class="cm">// 非扫描</span>
+    <span class="fn">ADC_Init</span>(ADC1, &ADC_InitStructure);
+
+    <span class="cm">// ④ 使能ADC + 校准（校准能提高精度，必须做！）</span>
+    <span class="fn">ADC_Cmd</span>(ADC1, ENABLE);
+    <span class="fn">ADC_ResetCalibration</span>(ADC1);          <span class="cm">// 复位校准</span>
+    <span class="kw">while</span>(<span class="fn">ADC_GetResetCalibrationStatus</span>(ADC1));  <span class="cm">// 等复位完成</span>
+    <span class="fn">ADC_StartCalibration</span>(ADC1);          <span class="cm">// 开始校准</span>
+    <span class="kw">while</span>(<span class="fn">ADC_GetCalibrationStatus</span>(ADC1));   <span class="cm">// 等校准完成</span>
+}</div>
+  <div class="warn">
+    <b>容易忘的两个点：</b>① GPIO必须配成模拟输入（GPIO_Mode_AIN），配成其他模式ADC读不准；② 校准不能省，复位校准+开始校准两步都要等完成。这两个是新手最常踩的坑。
+  </div>
+
+  <h4>② 读一次ADC值（ADC.c）</h4>
+  <div class="code-caption">文件：hardwere/ADC.c — ADC_GetValue</div>
+  <div class="code"><span class="kw">uint16_t</span> <span class="fn">ADC_GetValue</span>(<span class="kw">uint8_t</span> channel)
+{
+    <span class="cm">// ① 每次读数前重新配置通道（这样PA0和PA1可以轮流读）</span>
+    <span class="fn">ADC_RegularChannelConfig</span>(ADC1, channel, <span class="num">1</span>, ADC_SampleTime_239Cycles5);
+
+    <span class="cm">// ② 软件触发，开始转换</span>
+    <span class="fn">ADC_SoftwareStartConvCmd</span>(ADC1, ENABLE);
+
+    <span class="cm">// ③ 死等转换完成（EOC标志=End Of Conversion）</span>
+    <span class="kw">while</span> (<span class="fn">ADC_GetFlagStatus</span>(ADC1, ADC_FLAG_EOC) == RESET);
+
+    <span class="cm">// ④ 读结果（0~4095）</span>
+    <span class="kw">return</span> <span class="fn">ADC_GetConversionValue</span>(ADC1);
+}</div>
+
+  <h4>③ 多次采样取平均（软件滤波）</h4>
+  <div class="code-caption">文件：hardwere/ADC.c — Sample_Avg</div>
+  <div class="code"><span class="kw">float</span> <span class="fn">Sample_Avg</span>(<span class="kw">uint8_t</span> channel)
+{
+    <span class="kw">uint32_t</span> sum = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="kw">uint8_t</span> i = <span class="num">0</span>; i < <span class="num">10</span>; i++)   <span class="cm">// 连续读10次</span>
+    {
+        sum += <span class="fn">ADC_GetValue</span>(channel);
+    }
+    <span class="kw">return</span> sum / <span class="num">10.0f</span>;   <span class="cm">// 取平均，减小随机噪声</span>
+}</div>
+  <div class="analogy">
+    <b>为什么要取平均？</b>ADC读数会有随机噪声（比如电源波动、电磁干扰），单次读数可能跳来跳去。连续读10次取平均，就像你量身高量了10次取平均值，结果更稳定。这是最简单的软件滤波方法。
+  </div>
+
+  <h4>④ main.c主循环（V1版本）</h4>
+  <div class="code-caption">文件：user/main.c — V1主循环（对比V0，只多了ADC相关代码）</div>
+  <div class="code"><span class="kw">#include</span> <span class="st">"ADC.h"</span>    <span class="cm">// 新增：包含ADC头文件</span>
+
+<span class="kw">int</span> <span class="fn">main</span>(<span class="kw">void</span>)
+{
+    <span class="fn">LED_Init</span>(); <span class="fn">BEEP_Init</span>(); <span class="fn">USART1_Init</span>(<span class="num">115200</span>);
+    <span class="hl"><span class="fn">ADC1_Init</span>();</span>          <span class="cm">// 新增：ADC初始化</span>
+
+    <span class="kw">while</span>(<span class="num">1</span>)
+    {
+        <span class="hl"><span class="kw">float</span> volt = <span class="fn">Sample_Avg</span>(ADC_Channel_0) * <span class="num">3.3f</span> / <span class="num">4096.0f</span> * <span class="num">2.0f</span>;</span>
+        <span class="cm">// 读PA0，10次平均 → 换算电压（×分压比2）</span>
+
+        <span class="hl"><span class="kw">float</span> temp = <span class="fn">NTC_GetTemp</span>();</span>
+        <span class="cm">// 读PA1，NTC换算温度</span>
+
+        <span class="fn">printf</span>(<span class="st">"电压: %.2fV | 温度: %.1f℃\r\n"</span>, volt, temp);
+
+        <span class="hl"><span class="kw">if</span>(volt > <span class="num">14.0f</span>) { <span class="cm">// 超压报警</span>
+            <span class="fn">GPIO_ResetBits</span>(GPIOA, GPIO_Pin_8);  <span class="cm">// LED亮</span>
+            <span class="fn">printf</span>(<span class="st">"[警告] 电压过高!\r\n"</span>);
+        } <span class="kw">else</span> {
+            <span class="fn">GPIO_SetBits</span>(GPIOA, GPIO_Pin_8);    <span class="cm">// LED灭</span>
+        }</span>
+
+        <span class="fn">Delay_ms</span>(<span class="num">500</span>);   <span class="cm">// 500ms采一次</span>
+    }
+}</div>
+  <div class="tip">
+    <b>看出来了吗？V1和V0的main.c结构几乎一样！</b>只是多了3行：包含ADC.h、调用ADC1_Init()、主循环里读电压温度。这就是"版本叠加"的好处——地基打好了，加新功能只是加几行代码。
+  </div>
+
+  <h3>5. V1 功能-代码对应表</h3>
+  <table>
+    <tr><th>功能</th><th>关键代码</th><th>原理</th></tr>
+    <tr><td>把模拟电压变数字</td><td><code>ADC_GetValue()</code></td><td>ADC逐次逼近，输出0~4095</td></tr>
+    <tr><td>算出真实电压</td><td><code>adc × 3.3 / 4096 × 2</code></td><td>ADC值→电压→×分压比</td></tr>
+    <tr><td>算出温度</td><td><code>NTC_GetTemp()</code></td><td>分压反推阻值→B值公式</td></tr>
+    <tr><td>读数更稳定</td><td><code>Sample_Avg()</code></td><td>10次平均，软件滤波</td></tr>
+    <tr><td>超压报警</td><td><code>if(volt>14) LED亮</code></td><td>阈值判断+GPIO输出</td></tr>
+  </table>
+</div>
+
+<!-- ============ V2 ============ -->
+<div class="chapter" id="v2">
+  <div class="chapter-head">
+    <div class="chapter-num">CHAPTER · V2</div>
+    <h2>V2：OLED 显示（数据上屏，脱离电脑独立工作）</h2>
+  </div>
+
+  <div class="lead">
+    <span class="ver ver-v2">V2</span>
+    <b>目标功能：</b>电压和温度不再只靠串口打印，而是直接显示在OLED屏幕上。从此板子不用连电脑也能看到数据。<b>核心难点不是"显示"，而是"怎么显示不闪烁"——局部刷新技巧是本章精髓。</b>
+  </div>
+
+  <h3>1. OLED是什么？I2C又是什么？</h3>
+  <div class="grid">
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--purple)"></span>OLED屏幕</div>
+      <p>我们用的是0.96寸OLED，分辨率128×64像素，内部控制器是SSD1306。它通过I2C接口和单片机通信，I2C地址固定是0x78。</p>
+      <p class="mini">屏幕本身不认识字符，只认识"哪些像素点亮"。所以需要字库。</p>
+    </div>
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--cyan)"></span>I2C总线</div>
+      <p>I2C只需要两根线：SCL（时钟线）和SDA（数据线）。所有设备挂在这两根线上，靠地址区分。我们用软件模拟I2C时序（GPIO翻转），引脚随便选。</p>
+      <p class="mini">PB8=SCL, PB9=SDA，必须配开漏输出。</p>
+    </div>
+  </div>
+
+  <h3>2. I2C通信时序（4个基本动作）</h3>
+  <div class="fig">
+    <div class="fig-title">图6：I2C 起始/停止/写字节 时序图</div>
+    <svg width="100%" viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- SCL波形 -->
+      <text x="30" y="40" font-size="13" font-weight="700" fill="#0E7490">SCL</text>
+      <polyline points="70,30 70,50 120,50 120,30 170,30 170,50 220,50 220,30 270,30 270,50 320,50 320,30 370,30 370,50 420,50 420,30 470,30 470,50 520,50 520,30 570,30 570,50 620,50 620,30 670,30 670,50 720,50 720,30 770,30"
+        fill="none" stroke="#0E7490" stroke-width="2"/>
+      <!-- SDA波形 -->
+      <text x="30" y="110" font-size="13" font-weight="700" fill="#7C3AED">SDA</text>
+      <polyline points="70,100 95,100 95,120 120,120 170,120 170,100 220,100 270,100 270,120 320,120 370,120 370,100 420,100 470,100 470,120 520,120 570,120 570,100 620,100 670,100 670,120 720,120 745,120 745,100 770,100"
+        fill="none" stroke="#7C3AED" stroke-width="2"/>
+      <!-- 标注 -->
+      <text x="95" y="155" text-anchor="middle" font-size="11" fill="#DC2626" font-weight="700">START</text>
+      <text x="95" y="170" text-anchor="middle" font-size="9" fill="#DC2626">SCL高时SDA↓</text>
+      <text x="245" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit7</text>
+      <text x="295" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit6</text>
+      <text x="345" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit5</text>
+      <text x="395" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit4</text>
+      <text x="445" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit3</text>
+      <text x="495" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit2</text>
+      <text x="545" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit1</text>
+      <text x="595" y="155" text-anchor="middle" font-size="11" fill="#15803D">bit0</text>
+      <text x="645" y="155" text-anchor="middle" font-size="11" fill="#B45309">ACK</text>
+      <text x="745" y="155" text-anchor="middle" font-size="11" fill="#DC2626" font-weight="700">STOP</text>
+      <text x="745" y="170" text-anchor="middle" font-size="9" fill="#DC2626">SCL高时SDA↑</text>
+      <!-- 说明框 -->
+      <rect x="70" y="195" width="700" height="70" rx="8" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1"/>
+      <text x="90" y="218" font-size="12" fill="#5B21B6">① <b>起始START</b>：SCL高电平时，SDA从高变低（图中最左边SDA先掉下去）</text>
+      <text x="90" y="238" font-size="12" fill="#5B21B6">② <b>写字节</b>：SCL低电平时改变SDA，SCL高电平时从机读取（8位，高位先发）</text>
+      <text x="90" y="258" font-size="12" fill="#5B21B6">③ <b>应答ACK</b>：第9个时钟，从机拉低SDA表示"收到了"；④ <b>停止STOP</b>：SCL高时SDA从低变高</text>
+    </svg>
+    <div class="fig-note">软件I2C就是用GPIO翻转模拟这个时序。你在代码里看到的I2C_Start/I2C_Stop/I2C_SendByte，就是在严格按照这个时序拉高拉低引脚。</div>
+  </div>
+
+  <h3>3. OLED显示原理（字库+显存）</h3>
+  <div class="analogy">
+    <b>通俗理解：</b>OLED屏幕就像一个128×64的围棋盘，每个交叉点是一个像素（能亮能灭）。SSD1306把这个棋盘分成8"页"（Page0~7），每页8行高、128列宽。你告诉它"第3页第10列写0b10101010"，它就把那一列的8个像素按这个字节亮灭。<b>显示字符就是把字符的点阵数据一列一列写进去。</b>
+  </div>
+
+  <div class="fig">
+    <div class="fig-title">图7：OLED 页地址模式 + 字符显示原理（以字母'A'为例）</div>
+    <svg width="100%" viewBox="0 0 780 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- 屏幕外框 -->
+      <rect x="30" y="30" width="280" height="180" rx="6" fill="#0F172A" stroke="#334155" stroke-width="2"/>
+      <text x="170" y="228" text-anchor="middle" font-size="12" fill="#64748B">128×64 OLED = 8页 × 128列</text>
+      <!-- 页分隔线 -->
+      <line x1="30" y1="52.5" x2="310" y2="52.5" stroke="#1E293B" stroke-width="1"/>
+      <line x1="30" y1="75" x2="310" y2="75" stroke="#1E293B" stroke-width="1"/>
+      <line x1="30" y1="97.5" x2="310" y2="97.5" stroke="#1E293B" stroke-width="1"/>
+      <line x1="30" y1="120" x2="310" y2="120" stroke="#1E293B" stroke-width="1"/>
+      <line x1="30" y1="142.5" x2="310" y2="142.5" stroke="#1E293B" stroke-width="1"/>
+      <line x1="30" y1="165" x2="310" y2="165" stroke="#1E293B" stroke-width="1"/>
+      <line x1="30" y1="187.5" x2="310" y2="187.5" stroke="#1E293B" stroke-width="1"/>
+      <!-- 页标签 -->
+      <text x="22" y="45" text-anchor="end" font-size="9" fill="#475569">P0</text>
+      <text x="22" y="67" text-anchor="end" font-size="9" fill="#475569">P1</text>
+      <text x="22" y="90" text-anchor="end" font-size="9" fill="#475569">P2</text>
+      <text x="22" y="112" text-anchor="end" font-size="9" fill="#475569">P3</text>
+      <text x="22" y="135" text-anchor="end" font-size="9" fill="#475569">P4</text>
+      <text x="22" y="157" text-anchor="end" font-size="9" fill="#475569">P5</text>
+      <text x="22" y="180" text-anchor="end" font-size="9" fill="#475569">P6</text>
+      <text x="22" y="202" text-anchor="end" font-size="9" fill="#475569">P7</text>
+      <!-- 画一个A（放大的像素点） -->
+      <g transform="translate(120,60)">
+        <!-- A的点阵（简化示意，8x16） -->
+        <rect x="14" y="0" width="4" height="4" fill="#22D3EE"/>
+        <rect x="10" y="4" width="4" height="4" fill="#22D3EE"/>
+        <rect x="18" y="4" width="4" height="4" fill="#22D3EE"/>
+        <rect x="6" y="8" width="4" height="4" fill="#22D3EE"/>
+        <rect x="22" y="8" width="4" height="4" fill="#22D3EE"/>
+        <rect x="2" y="12" width="28" height="4" fill="#22D3EE"/>
+        <rect x="0" y="16" width="4" height="4" fill="#22D3EE"/>
+        <rect x="26" y="16" width="4" height="4" fill="#22D3EE"/>
+        <rect x="0" y="20" width="4" height="4" fill="#22D3EE"/>
+        <rect x="26" y="20" width="4" height="4" fill="#22D3EE"/>
+      </g>
+      <text x="170" y="250" text-anchor="middle" font-size="11" fill="#22D3EE">字符'A'占P1+P2两行（16像素高）×8列</text>
+      <!-- 箭头 -->
+      <path d="M320 120 L370 120" stroke="#666" stroke-width="2" marker-end="url(#arr5)"/>
+      <!-- 字库说明 -->
+      <rect x="370" y="50" width="380" height="140" rx="8" fill="#FEF3C7" stroke="#B45309" stroke-width="1.5"/>
+      <text x="560" y="75" text-anchor="middle" font-size="13" font-weight="700" fill="#92400E">字库 OLED_F8x16['A'] = 16字节</text>
+      <text x="390" y="100" font-size="11" fill="#92400E">上半页(P1) 8字节：</text>
+      <text x="390" y="118" font-size="10" fill="#B45309" font-family="monospace">0x00,0x10,0x10,0x08,0x08,0x04,0x3C,0x02</text>
+      <text x="390" y="142" font-size="11" fill="#92400E">下半页(P2) 8字节：</text>
+      <text x="390" y="160" font-size="10" fill="#B45309" font-family="monospace">0x41,0x41,0x41,0x3E,0x00,0x00,0x00,0x00</text>
+      <text x="390" y="183" font-size="10" fill="#92400E" font-style="italic">每个字节=一列8个像素，bit0=最上面那行</text>
+      <defs>
+        <marker id="arr5" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#666"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="fig-note">OLED_ShowChar做的事：先设光标到上半页，写8字节（上半部分），再设光标到下半页，写8字节（下半部分）。一个字符就显示出来了。</div>
+  </div>
+
+  <h3>4. 本章精髓：局部刷新（为什么不闪烁）</h3>
+  <div class="warn">
+    <b>新手最常见的错误：</b>每次循环都 <code>OLED_Clear()</code> 清屏，然后重绘全部内容。结果就是屏幕疯狂闪烁——因为清屏和重绘之间有短暂的"全黑"时间，人眼能察觉到。
+  </div>
+
+  <div class="fig">
+    <div class="fig-title">图8：错误做法 vs 正确做法</div>
+    <svg width="100%" viewBox="0 0 860 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- 错误做法 -->
+      <rect x="20" y="20" width="390" height="200" rx="10" fill="#FEF2F2" stroke="#DC2626" stroke-width="2"/>
+      <text x="215" y="48" text-anchor="middle" font-size="14" font-weight="700" fill="#991B1B">❌ 错误：整屏清屏重绘（闪烁）</text>
+      <!-- 流程 -->
+      <rect x="50" y="65" width="100" height="35" rx="6" fill="#FECACA" stroke="#DC2626"/>
+      <text x="100" y="87" text-anchor="middle" font-size="11" fill="#991B1B">OLED_Clear()</text>
+      <text x="100" y="112" text-anchor="middle" font-size="9" fill="#DC2626">全黑一瞬间</text>
+      <path d="M150 82 L180 82" stroke="#991B1B" stroke-width="1.5" marker-end="url(#arr6)"/>
+      <rect x="180" y="65" width="100" height="35" rx="6" fill="#FECACA" stroke="#DC2626"/>
+      <text x="230" y="87" text-anchor="middle" font-size="11" fill="#991B1B">重绘标签</text>
+      <path d="M280 82 L310 82" stroke="#991B1B" stroke-width="1.5" marker-end="url(#arr6)"/>
+      <rect x="310" y="65" width="80" height="35" rx="6" fill="#FECACA" stroke="#DC2626"/>
+      <text x="350" y="87" text-anchor="middle" font-size="11" fill="#991B1B">重绘数字</text>
+      <!-- 闪烁示意 -->
+      <rect x="50" y="125" width="340" height="80" rx="6" fill="#0F172A"/>
+      <text x="220" y="150" text-anchor="middle" font-size="12" fill="#F87171">Volt: --.--V  ← 清屏瞬间全黑</text>
+      <text x="220" y="175" text-anchor="middle" font-size="12" fill="#F87171">Volt: 12.34V  ← 重绘完成</text>
+      <text x="220" y="195" text-anchor="middle" font-size="10" fill="#F87171" font-style="italic">人眼看到：亮→黑→亮→黑→... = 闪烁</text>
+      <!-- 正确做法 -->
+      <rect x="450" y="20" width="390" height="200" rx="10" fill="#F0FDF4" stroke="#15803D" stroke-width="2"/>
+      <text x="645" y="48" text-anchor="middle" font-size="14" font-weight="700" fill="#166534">✅ 正确：局部刷新（无闪烁）</text>
+      <!-- 初始化只写一次 -->
+      <rect x="480" y="65" width="160" height="35" rx="6" fill="#BBF7D0" stroke="#15803D"/>
+      <text x="560" y="87" text-anchor="middle" font-size="11" fill="#166534">初始化：写标签"Volt:"</text>
+      <text x="560" y="112" text-anchor="middle" font-size="9" fill="#15803D">只执行一次，后面不动</text>
+      <!-- 循环只更新数字 -->
+      <rect x="660" y="65" width="160" height="35" rx="6" fill="#BBF7D0" stroke="#15803D"/>
+      <text x="740" y="87" text-anchor="middle" font-size="11" fill="#166534">循环：只覆盖数字区</text>
+      <!-- 稳定示意 -->
+      <rect x="480" y="125" width="340" height="80" rx="6" fill="#0F172A"/>
+      <text x="650" y="150" text-anchor="middle" font-size="12" fill="#4ADE80">Volt: 12.34V  ← 标签一直在</text>
+      <text x="650" y="175" text-anchor="middle" font-size="12" fill="#4ADE80">Volt: 12.35V  ← 只有数字变</text>
+      <text x="650" y="195" text-anchor="middle" font-size="10" fill="#4ADE80" font-style="italic">人眼看到：标签稳定，数字平滑变化 = 无闪烁</text>
+      <defs>
+        <marker id="arr6" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#991B1B"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="fig-note">核心思想：<b>不变的东西只写一次，变的东西只覆盖变化的区域。</b>"Volt:"这个标签500年不变，为什么要每次重绘？只把数字那几列覆盖掉就行。</div>
+  </div>
+
+  <h3>5. 核心代码逐行拆解</h3>
+
+  <h4>① main.c初始化（标签只写一次）</h4>
+  <div class="code-caption">文件：user/main.c — V2初始化段</div>
+  <div class="code"><span class="fn">OLED_Init</span>();    <span class="cm">// 初始化OLED（内部会先初始化软件I2C）</span>
+
+<span class="cm">// ===== 静态标签只写一次（局部刷新核心）=====</span>
+<span class="fn">OLED_ShowString</span>(<span class="num">1</span>, <span class="num">1</span>, <span class="st">"Volt:"</span>);       <span class="cm">// 第1行第1列：电压标签</span>
+<span class="fn">OLED_ShowString</span>(<span class="num">2</span>, <span class="num">1</span>, <span class="st">"Temp:"</span>);       <span class="cm">// 第2行第1列：温度标签</span>
+<span class="fn">OLED_ShowString</span>(<span class="num">3</span>, <span class="num">1</span>, <span class="st">"Status:"</span>);     <span class="cm">// 第3行第1列：状态标签</span>
+<span class="fn">OLED_ShowString</span>(<span class="num">4</span>, <span class="num">1</span>, <span class="st">"CarGuard V2"</span>); <span class="cm">// 第4行：版本信息</span></div>
+  <div class="tip">
+    <b>坐标怎么看？</b>OLED_ShowString(Line, Column, ...) 中 Line=1~4（每行16像素高），Column=1~16（每列8像素宽）。一个字符占1列。所以"Volt:"占5列（V-o-l-t-:），数字从第6列开始写。
+  </div>
+
+  <h4>② main.c主循环（只更新数字区域）</h4>
+  <div class="code-caption">文件：user/main.c — V2主循环显示部分</div>
+  <div class="code"><span class="kw">while</span>(<span class="num">1</span>)
+{
+    <span class="kw">float</span> volt = <span class="fn">Sample_Avg</span>(ADC_Channel_0) * <span class="num">3.3f</span> / <span class="num">4096.0f</span> * <span class="num">2.0f</span>;
+    <span class="kw">float</span> temp = <span class="fn">NTC_GetTemp</span>();
+
+    <span class="cm">// 电压：第1行第6列起，2位整数+2位小数（含符号共6列）</span>
+    <span class="fn">OLED_ShowFloatNum</span>(<span class="num">1</span>, <span class="num">6</span>, volt, <span class="num">2</span>, <span class="num">2</span>);
+    <span class="fn">OLED_ShowChar</span>(<span class="num">1</span>, <span class="num">12</span>, <span class="st">'V'</span>);          <span class="cm">// 单位V在第12列</span>
+
+    <span class="cm">// 温度：第2行第6列起，2位整数+1位小数（含符号共5列）</span>
+    <span class="fn">OLED_ShowFloatNum</span>(<span class="num">2</span>, <span class="num">6</span>, temp, <span class="num">2</span>, <span class="num">1</span>);
+    <span class="fn">OLED_ShowChar</span>(<span class="num">2</span>, <span class="num">11</span>, <span class="st">'C'</span>);          <span class="cm">// 单位C在第11列</span>
+
+    <span class="cm">// 状态：只更新第3行第8列起的6个字符</span>
+    <span class="kw">if</span>(volt > <span class="num">14.0f</span>) {
+        <span class="fn">OLED_ShowString</span>(<span class="num">3</span>, <span class="num">8</span>, <span class="st">"Warn!!"</span>);
+    } <span class="kw">else</span> {
+        <span class="fn">OLED_ShowString</span>(<span class="num">3</span>, <span class="num">8</span>, <span class="st">"Normal"</span>);
+    }
+
+    <span class="fn">Delay_ms</span>(<span class="num">500</span>);
+}</div>
+  <div class="analogy">
+    <b>就像填表：</b>表格的表头（"Volt:""Temp:"）打印一次就不动了，每次只需要把数字栏里的旧数字用新数字覆盖掉。你不会每次填表都把整张表重新画一遍吧？OLED局部刷新就是这个道理。
+  </div>
+
+  <h4>③ 浮点数显示函数（OLED.c，V2新增）</h4>
+  <div class="code-caption">文件：hardwere/OLED.c — OLED_ShowFloatNum（核心逻辑）</div>
+  <div class="code"><span class="kw">void</span> <span class="fn">OLED_ShowFloatNum</span>(<span class="kw">uint8_t</span> Line, <span class="kw">uint8_t</span> Column, <span class="kw">float</span> Number, <span class="kw">uint8_t</span> IntLen, <span class="kw">uint8_t</span> DecLen)
+{
+    <span class="cm">// ① 符号位：负数显示'-'，正数显示空格（保持对齐）</span>
+    <span class="kw">if</span> (Number < <span class="num">0</span>) { <span class="fn">OLED_ShowChar</span>(Line, col, <span class="st">'-'</span>); Number = -Number; }
+    <span class="kw">else</span> { <span class="fn">OLED_ShowChar</span>(Line, col, <span class="st">' '</span>); }
+
+    <span class="cm">// ② 把浮点数放大成整数（如12.34×100=1234），+0.5实现四舍五入</span>
+    <span class="kw">uint32_t</span> scaled = (<span class="kw">uint32_t</span>)(Number * scale + <span class="num">0.5f</span>);
+
+    <span class="cm">// ③ 分离整数部分和小数部分</span>
+    intPart = scaled / (<span class="kw">uint32_t</span>)scale;   <span class="cm">// 1234/100 = 12</span>
+    decPart = scaled % (<span class="kw">uint32_t</span>)scale;   <span class="cm">// 1234%100 = 34</span>
+
+    <span class="cm">// ④ 依次显示：整数部分 → 小数点 → 小数部分</span>
+    <span class="fn">OLED_ShowNum</span>(Line, col, intPart, IntLen);
+    <span class="fn">OLED_ShowChar</span>(Line, col+IntLen, <span class="st">'.'</span>);
+    <span class="fn">OLED_ShowNum</span>(Line, col+IntLen+<span class="num">1</span>, decPart, DecLen);
+}</div>
+  <div class="tip">
+    <b>为什么不直接用printf打印到OLED？</b>因为printf是输出到串口的，OLED没有"标准输出"的概念。而且OLED需要精确定位到某行某列，printf做不到。所以我们自己写浮点数显示函数——思路就是"放大成整数→拆分→逐位显示"。
+  </div>
+
+  <h3>6. V2 功能-代码对应表</h3>
+  <table>
+    <tr><th>功能</th><th>关键代码</th><th>所在文件</th></tr>
+    <tr><td>软件I2C通信</td><td><code>I2C1_Init/Start/Stop/SendByte</code></td><td>SoftwareI2C.c</td></tr>
+    <tr><td>OLED写命令/数据</td><td><code>OLED_WriteCmd/WriteData</code></td><td>OLED.c</td></tr>
+    <tr><td>OLED初始化</td><td><code>OLED_Init()</code>（发一串初始化命令）</td><td>OLED.c</td></tr>
+    <tr><td>显示字符/字符串</td><td><code>OLED_ShowChar/ShowString</code></td><td>OLED.c</td></tr>
+    <tr><td>显示整数</td><td><code>OLED_ShowNum/SignedNum/HexNum/BinNum</code></td><td>OLED.c</td></tr>
+    <tr><td>显示浮点数</td><td><code>OLED_ShowFloatNum</code>（V2新增）</td><td>OLED.c</td></tr>
+    <tr><td>局部刷新防闪烁</td><td>标签初始化写一次，循环只覆盖数字区</td><td>main.c</td></tr>
+  </table>
+</div>
+
+<!-- ============ 版本对比 ============ -->
+<div class="chapter" id="compare">
+  <div class="chapter-head">
+    <div class="chapter-num">COMPARISON</div>
+    <h2>三个版本横向对比</h2>
+  </div>
+
+  <table>
+    <tr>
+      <th>维度</th>
+      <th><span class="ver ver-v0">V0</span> 串口控制</th>
+      <th><span class="ver ver-v1">V1</span> ADC采集</th>
+      <th><span class="ver ver-v2">V2</span> OLED显示</th>
+    </tr>
+    <tr>
+      <td><b>核心能力</b></td>
+      <td>输出控制（LED/BEEP）</td>
+      <td>输入采集（电压/温度）</td>
+      <td>人机交互（屏幕显示）</td>
+    </tr>
+    <tr>
+      <td><b>新增外设</b></td>
+      <td>USART1, LED, BEEP</td>
+      <td>ADC1</td>
+      <td>OLED(软件I2C)</td>
+    </tr>
+    <tr>
+      <td><b>新增引脚</b></td>
+      <td>PA8, PB0, PA9, PA10</td>
+      <td>PA0, PA1</td>
+      <td>PB8, PB9</td>
+    </tr>
+    <tr>
+      <td><b>新增.c文件</b></td>
+      <td>led.c, BEEP.c, USART.c</td>
+      <td>ADC.c</td>
+      <td>OLED.c, SoftwareI2C.c</td>
+    </tr>
+    <tr>
+      <td><b>main.c新增行数</b></td>
+      <td>~30行（基础骨架）</td>
+      <td>~5行（加ADC）</td>
+      <td>~10行（加OLED显示）</td>
+    </tr>
+    <tr>
+      <td><b>关键技术点</b></td>
+      <td>中断收字符+主循环解析</td>
+      <td>ADC换算+NTC测温+平均滤波</td>
+      <td>I2C时序+字库+局部刷新</td>
+    </tr>
+    <tr>
+      <td><b>数据流向</b></td>
+      <td>电脑→单片机→LED/BEEP</td>
+      <td>传感器→单片机→电脑</td>
+      <td>传感器→单片机→OLED</td>
+    </tr>
+    <tr>
+      <td><b>脱离电脑？</b></td>
+      <td>不能（要发指令）</td>
+      <td>不能（只能串口看）</td>
+      <td><b>能！</b>（屏幕独立显示）</td>
+    </tr>
+  </table>
+
+  <div class="lead">
+    <b>看出演进规律了吗？</b>V0是"电脑指挥单片机做事"，V1是"单片机感知环境告诉电脑"，V2是"单片机自己感知自己显示"。到V2为止，设备终于可以脱离电脑独立工作了——这就是一个完整的"感知→处理→显示"闭环。
+  </div>
+</div>
+
+<!-- ============ 方法论 ============ -->
+<div class="chapter" id="method">
+  <div class="chapter-head">
+    <div class="chapter-num">METHODOLOGY</div>
+    <h2>怎么练到"自己能写出来"？</h2>
+  </div>
+
+  <h3>1. 写任何外设驱动的万能四步法</h3>
+  <ol class="steps">
+    <li><b>开时钟</b>——外设和对应的GPIO都要开时钟（RCC_APB2PeriphClockCmd）。忘了开时钟，后面配置全无效。</li>
+    <li><b>配GPIO</b>——输入还是输出？推挽还是开漏？上拉还是浮空？根据外设需求选对模式。（ADC要模拟输入、I2C要开漏、LED要推挽输出、按键要上拉输入）</li>
+    <li><b>配外设</b>——填初始化结构体（USART_InitTypeDef / ADC_InitTypeDef），调用Init函数，使能外设。</li>
+    <li><b>写读写函数</b>——封装"发一个字节""读一个值"这种最底层操作，再在上面组合出高级功能。</li>
+  </ol>
+
+  <h3>2. main.c的万能结构</h3>
+  <div class="code"><span class="kw">int</span> <span class="fn">main</span>(<span class="kw">void</span>)
+{
+    <span class="cm">// ===== 第一部分：初始化（只执行一次）=====</span>
+    <span class="cm">// 按顺序初始化每个外设：LED → BEEP → 串口 → ADC → OLED</span>
+    <span class="cm">// 每个外设一行Init调用</span>
+
+    <span class="cm">// ===== 第二部分：一次性设置（如OLED静态标签）=====</span>
+    <span class="cm">// 不变的东西在这里写一次</span>
+
+    <span class="cm">// ===== 第三部分：主循环（反复执行）=====</span>
+    <span class="kw">while</span>(<span class="num">1</span>)
+    {
+        <span class="cm">// ① 采集输入（读ADC/按键等）</span>
+        <span class="cm">// ② 处理数据（换算/判断/滤波）</span>
+        <span class="cm">// ③ 输出结果（串口打印/OLED显示/LED报警）</span>
+        <span class="cm">// ④ 延时或等待（控制刷新频率）</span>
+    }
+}</div>
+
+  <h3>3. 自测清单（写完代码后对照检查）</h3>
+  <div class="grid">
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--blue)"></span>编译前检查</div>
+      <ul>
+        <li>每个.c文件都#include了对应的.h</li>
+        <li>函数名在.h声明、.c定义、调用处三处一致</li>
+        <li>没有和标准库重名（如I2C_Init→改I2C1_Init）</li>
+        <li>Keil工程里添加了所有.c文件</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--green)"></span>硬件检查</div>
+      <ul>
+        <li>引脚有没有冲突（两个外设不能共用一个引脚）</li>
+        <li>GPIO模式对不对（ADC要AIN、I2C要OD）</li>
+        <li>接线对不对（串口TX交叉接、I2C地址对不对）</li>
+        <li>供电够不够（OLED要3.3V不要接5V）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="t"><span class="dot" style="background:var(--orange)"></span>逻辑检查</div>
+      <ul>
+        <li>初始化顺序对不对（被依赖的先初始化）</li>
+        <li>有没有忘记校准（ADC必须校准）</li>
+        <li>显示有没有闪烁（是不是每次都Clear了）</li>
+        <li>数值对不对（串口和OLED数值是否一致）</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>4. 学习建议（从"看懂"到"会写"）</h3>
+  <div class="tip">
+    <b>第一遍：</b>照着教程抄一遍，能编译通过、能跑起来就行。不追求理解每一行。<br>
+    <b>第二遍：</b>关掉教程，凭记忆重写，写不出来的地方看一眼提示。重点理解"为什么这么写"。<br>
+    <b>第三遍：</b>换个引脚、换个外设（比如把LED从PA8改到PB5），自己修改代码验证。能独立改成功，说明真的懂了。<br>
+    <b>终极检验：</b>拿一个全新的外设（比如DHT11温湿度传感器），只看数据手册，自己写出驱动。能写出来，你就出师了。
+  </div>
+
+  <div class="lead" style="margin-top:24px">
+    <b>记住：嵌入式开发没有魔法，所有复杂的功能都是"初始化→读→处理→写"这四步的组合。</b>把每个外设的"四步法"练熟，把main.c的"三段式"结构刻进脑子里，V3、V4、V5……不过是在这个骨架上继续加外设而已。
+  </div>
+</div>
+
+</div>
+</body>
+</html>
+
+</div>
+</body>
+</html>

@@ -264,6 +264,67 @@ void OLED_ShowBinNum(uint8_t Line, uint8_t Column, uint32_t Number, uint8_t Leng
 }
 
 /**
+  * @brief  OLED显示浮点数（带符号+整数+小数点+小数）
+  * @param  Line 起始行位置，范围：1~4
+  * @param  Column 起始列位置，范围：1~16
+  * @param  Number 要显示的浮点数
+  * @param  IntLen 整数部分位数（不含符号），范围：1~9
+  * @param  DecLen 小数部分位数，范围：1~4
+  * @retval 无
+  * @note   总占位 = 符号位(1) + IntLen + 小数点(1) + DecLen
+  *         例如 IntLen=2, DecLen=2 → 总宽6列："-12.34"
+  */
+void OLED_ShowFloatNum(uint8_t Line, uint8_t Column, float Number, uint8_t IntLen, uint8_t DecLen)
+{
+	uint8_t col = Column;
+	uint32_t intPart, decPart;
+	float scale = 1.0f;
+	uint8_t i;
+
+	/* ① 符号位 */
+	if (Number < 0)
+	{
+		OLED_ShowChar(Line, col, '-');
+		Number = -Number;
+	}
+	else
+	{
+		OLED_ShowChar(Line, col, ' ');  /* 正数用空格占位，保持对齐 */
+	}
+	col++;
+
+	/* ② 计算小数放大倍数 */
+	for (i = 0; i < DecLen; i++)
+	{
+		scale *= 10.0f;
+	}
+
+	/* ③ 四舍五入到指定小数位 */
+	uint32_t scaled = (uint32_t)(Number * scale + 0.5f);
+
+	/* ④ 分离整数部分和小数部分 */
+	intPart = scaled / (uint32_t)scale;
+	decPart = scaled % (uint32_t)scale;
+
+	/* ⑤ 显示整数部分（高位补0） */
+	for (i = 0; i < IntLen; i++)
+	{
+		OLED_ShowChar(Line, col + i, '0' + intPart / OLED_Pow(10, IntLen - i - 1) % 10);
+	}
+	col += IntLen;
+
+	/* ⑥ 显示小数点 */
+	OLED_ShowChar(Line, col, '.');
+	col++;
+
+	/* ⑦ 显示小数部分（高位补0） */
+	for (i = 0; i < DecLen; i++)
+	{
+		OLED_ShowChar(Line, col + i, '0' + decPart / OLED_Pow(10, DecLen - i - 1) % 10);
+	}
+}
+
+/**
   * @brief  OLED初始化
   * @param  无
   * @retval 无
