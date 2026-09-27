@@ -26,10 +26,10 @@ int main(void)
 	printf("CarGuard V2 启动成功 | ADC采集 + OLED显示\r\n");
 
 	/* ===== V2：静态标签只写一次（局部刷新核心，避免闪烁）===== */
-	OLED_ShowString(1, 1, "Volt:");      /* 第1行：电压标签 */
-	OLED_ShowString(2, 1, "Temp:");      /* 第2行：温度标签 */
-	OLED_ShowString(3, 1, "Status:");    /* 第3行：状态标签 */
-	OLED_ShowString(4, 1, "CarGuard V2");/* 第4行：版本信息 */
+	OLED_ShowString(1, 1, "电压:");      /* 第1行：电压标签 */
+	OLED_ShowString(2, 1, "温度:");      /* 第2行：温度标签 */
+	OLED_ShowString(3, 1, "状态:");    /* 第3行：状态标签 */
+	OLED_ShowString(4, 1, "智能车载终端V2");/* 第4行：版本信息 */
 
 	/* ===== 主循环（死循环）===== */
 	while (1)
@@ -54,15 +54,15 @@ int main(void)
 		OLED_ShowChar(2, 11, 'C');
 
 		/* ⑤ 报警逻辑：电压超标时LED亮+OLED显示警告，否则LED灭+显示正常 */
-		if (volt > 14.0f)
+		if (volt > 4.0f)
 		{
-			GPIO_ResetBits(GPIOA, GPIO_Pin_8);  /* LED点亮（低电平有效） */
+			GPIO_SetBits(GPIOA, GPIO_Pin_8);  /* LED点亮（低电平有效） */
 			OLED_ShowString(3, 8, "Warn!!");     /* 状态：警告 */
 			printf("[警告] 电压过高!\r\n");
 		}
 		else
 		{
-			GPIO_SetBits(GPIOA, GPIO_Pin_8);     /* LED熄灭 */
+			GPIO_ResetBits(GPIOA, GPIO_Pin_8);     /* LED熄灭 */
 			OLED_ShowString(3, 8, "Normal");      /* 状态：正常 */
 		}
 
